@@ -62,3 +62,27 @@ def get_recommendation(
     """Return a dict with keys 'tmdb_id' (int) and 'description' (str)."""
     prompt = build_prompt(preferences, history, candidates)
     return call_llm(prompt)
+
+
+if __name__ == "__main__":
+    import os, pandas as pd
+
+    DATA_PATH = os.path.join(os.path.dirname(__file__), "tmdb_top1000_movies.csv")
+    candidates = pd.read_csv(DATA_PATH).nlargest(40, "vote_count")
+
+    print("Movie recommender – type your preferences and press Enter.")
+    print("For watch history, enter comma-separated movie titles (or leave blank).")
+    print()
+
+    preferences = input("Preferences: ").strip()
+    history_raw = input("Watch history (optional): ").strip()
+    history = [t.strip() for t in history_raw.split(",")] if history_raw else []
+
+    print("\nThinking...\n")
+    result = get_recommendation(preferences, history, candidates)
+
+    match = candidates[candidates["tmdb_id"] == result["tmdb_id"]]
+    title = match.iloc[0]["title"] if not match.empty else "unknown"
+
+    print(f"Recommendation: {title} (tmdb_id={result['tmdb_id']})")
+    print(f"\n{result['description']}")
