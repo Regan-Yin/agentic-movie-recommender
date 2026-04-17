@@ -6,10 +6,12 @@ Your task is to implement `get_recommendation()` in `llm.py`. The function recei
 
 ## What to submit
 
-Two files:
+Submit a **zip file** containing at minimum:
 
 - `llm.py` — your implementation
 - `requirements.txt` — any packages your code needs (one per line, e.g. `ollama`, `pandas`)
+
+You may include additional files (e.g. helper modules, data files) if your implementation needs them. Do not include your `.env` file, the `.venv/` folder, or `__pycache__`. Keep the zip under **10 MB**.
 
 **Do NOT hard-code your API key.** The grader will inject `OLLAMA_API_KEY` at run time. Read it from the environment:
 
