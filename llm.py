@@ -20,6 +20,7 @@ import re
 import time
 import argparse
 import importlib
+import math
 
 ollama = importlib.import_module("ollama")
 pd = importlib.import_module("pandas")
@@ -31,7 +32,15 @@ pd = importlib.import_module("pandas")
 MODEL = "gemma4:31b-cloud"
 
 DATA_PATH = os.path.join(os.path.dirname(__file__), "tmdb_top1000_movies.csv")
+TUNED_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "dspy_gepa_best_config.json")
 _ALL_MOVIES = pd.read_csv(DATA_PATH)
+
+PROMPT_STYLES = {
+    "balanced": "Be concise, specific, and grounded in concrete movie attributes.",
+    "cinematic": "Use vivid cinematic language while staying factual and avoiding spoilers.",
+    "precision": "Prioritize tight preference matching and explicit evidence from the candidate context.",
+    "novelty": "Favor fresh yet relevant options and explain what feels new versus watch history.",
+}
 
 
 def _normalize_text(text: str) -> str:
@@ -47,6 +56,42 @@ def _safe_int(value, default: int = 0) -> int:
         return int(value)
     except Exception:
         return default
+
+
+def _load_prompt_style() -> str:
+    style = "balanced"
+    try:
+        if os.path.exists(TUNED_CONFIG_PATH):
+            with open(TUNED_CONFIG_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            maybe_style = str(data.get("best_style", "")).strip().lower()
+            if maybe_style in PROMPT_STYLES:
+                style = maybe_style
+    except Exception:
+        style = "balanced"
+    env_style = str(os.getenv("RECOMMENDER_PROMPT_STYLE", "")).strip().lower()
+    if env_style in PROMPT_STYLES:
+        style = env_style
+    return style
+
+
+def _load_tuned_instruction() -> str:
+    instruction = ""
+    try:
+        if os.path.exists(TUNED_CONFIG_PATH):
+            with open(TUNED_CONFIG_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            maybe = str(data.get("best_instruction", "")).strip()
+            if maybe:
+                instruction = maybe
+    except Exception:
+        instruction = ""
+
+    env_instruction = str(os.getenv("RECOMMENDER_TUNED_INSTRUCTION", "")).strip()
+    if env_instruction:
+        instruction = env_instruction
+
+    return instruction[:3000]
 
 
 def _infer_genre_weights(preferences: str) -> dict[str, float]:
@@ -139,7 +184,7 @@ def _prepare_movie_table(df: pd.DataFrame) -> pd.DataFrame:
     vote_avg_n = (movies["vote_average"] - movies["vote_average"].min()) / (
         (movies["vote_average"].max() - movies["vote_average"].min()) or 1.0
     )
-    vote_count_n = (movies["vote_count"].map(lambda x: x if x > 0 else 1).map(lambda x: x.bit_length()) - 1)
+    vote_count_n = movies["vote_count"].map(lambda x: math.log1p(max(float(x), 1.0)))
     vote_count_n = vote_count_n / (vote_count_n.max() or 1.0)
     pop_n = (movies["popularity"] - movies["popularity"].min()) / (
         (movies["popularity"].max() - movies["popularity"].min()) or 1.0
@@ -156,13 +201,27 @@ _MOVIES = _prepare_movie_table(_ALL_MOVIES)
 TOP_MOVIES = _MOVIES.nlargest(350, ["vote_count", "popularity", "vote_average"]).copy()
 
 _CACHE: dict[tuple[str, tuple[int, ...], tuple[str, ...]], dict] = {}
+_ACTIVE_PROMPT_STYLE = _load_prompt_style()
+_ACTIVE_TUNED_INSTRUCTION = _load_tuned_instruction()
 
 
-def _rank_candidates(preferences: str, history: list[str], history_ids: list[int]) -> pd.DataFrame:
+def _sanitize_description(text: str) -> str:
+    cleaned = re.sub(r"\s+", " ", str(text or "")).strip()
+    return cleaned[:500]
+
+
+def _enforce_output_spec(tmdb_id: int, description: str) -> dict:
+    # Return exactly two keys as required by llm.py output specification.
+    return {
+        "tmdb_id": int(tmdb_id),
+        "description": _sanitize_description(description),
+    }
+
+
+def _rag_retrieve(preferences: str, history: list[str], history_ids: list[int], top_k: int = 90) -> pd.DataFrame:
     pref_text = _normalize_text(preferences)
     pref_tokens = _tokenize(pref_text)
     pref_genre_weights = _infer_genre_weights(preferences)
-    blocked_genres = _infer_blocked_genres(preferences)
 
     history_id_set = {_safe_int(i) for i in history_ids if _safe_int(i) > 0}
     history_titles_norm = {_normalize_text(t) for t in history if _normalize_text(t)}
@@ -173,6 +232,49 @@ def _rank_candidates(preferences: str, history: list[str], history_ids: list[int
     ].copy()
     if candidates.empty:
         candidates = TOP_MOVIES.copy()
+
+    history_rows = _MOVIES[_MOVIES["tmdb_id"].isin(history_id_set)]
+    history_tokens: set[str] = set()
+    for row in history_rows.itertuples():
+        history_tokens |= row.token_set
+
+    expanded_tokens = set(pref_tokens)
+    for g in pref_genre_weights:
+        expanded_tokens |= _tokenize(g)
+
+    retrieve_scores = []
+    norm = max(6, len(expanded_tokens))
+    for row in candidates.itertuples():
+        lexical = len(expanded_tokens & row.token_set) / norm
+        keyword = len(expanded_tokens & row.keywords_set) / norm
+
+        genre_bonus = 0.0
+        for genre, weight in pref_genre_weights.items():
+            if genre in row.genres_set:
+                genre_bonus += weight
+
+        history_penalty = 0.0
+        if history_tokens:
+            history_penalty = len(history_tokens & row.token_set) / max(12, len(row.token_set))
+
+        score = 0.72 * lexical + 0.45 * keyword + 0.32 * genre_bonus + 0.38 * float(row.quality_score) - 0.14 * history_penalty
+        retrieve_scores.append(score)
+
+    candidates["rag_score"] = retrieve_scores
+    return candidates.sort_values("rag_score", ascending=False).head(top_k).copy()
+
+
+def _rank_candidates(preferences: str, history: list[str], history_ids: list[int]) -> pd.DataFrame:
+    pref_text = _normalize_text(preferences)
+    pref_tokens = _tokenize(pref_text)
+    pref_genre_weights = _infer_genre_weights(preferences)
+    blocked_genres = _infer_blocked_genres(preferences)
+
+    candidates = _rag_retrieve(preferences, history, history_ids, top_k=90)
+    if candidates.empty:
+        candidates = TOP_MOVIES.copy()
+
+    history_id_set = {_safe_int(i) for i in history_ids if _safe_int(i) > 0}
 
     history_rows = _MOVIES[_MOVIES["tmdb_id"].isin(history_id_set)]
     history_genres: set[str] = set()
@@ -200,6 +302,7 @@ def _rank_candidates(preferences: str, history: list[str], history_ids: list[int
 
         score = (
             0.58 * float(row.quality_score)
+            + 0.34 * float(getattr(row, "rag_score", 0.0))
             + 1.05 * token_overlap
             + 0.26 * genre_match
             + 0.30 * keyword_bonus
@@ -214,8 +317,16 @@ def _rank_candidates(preferences: str, history: list[str], history_ids: list[int
     return candidates
 
 
-def _build_prompt(preferences: str, history: list[str], history_ids: list[int], ranked: pd.DataFrame) -> str:
+def _build_prompt(
+    preferences: str,
+    history: list[str],
+    history_ids: list[int],
+    ranked: pd.DataFrame,
+    style_name: str,
+    tuned_instruction: str,
+) -> str:
     short_list = ranked.head(12)
+    style = PROMPT_STYLES.get(style_name, PROMPT_STYLES["balanced"])
     history_pairs = []
     for idx, title in enumerate(history):
         hid = history_ids[idx] if idx < len(history_ids) else None
@@ -232,14 +343,20 @@ def _build_prompt(preferences: str, history: list[str], history_ids: list[int], 
             "- "
             f"tmdb_id={row.tmdb_id} | title=\"{row.title}\" | year={_safe_int(row.year)} | "
             f"genres={row.genres} | rating={float(row.vote_average):.2f} | "
-            f"director={row.director} | cast={str(row.top_cast)[:90]} | overview={overview}"
+            f"director={row.director} | cast={str(row.top_cast)[:90]} | "
+            f"rag_score={float(getattr(row, 'rag_score', 0.0)):.3f} | overview={overview}"
         )
 
     candidate_text = "\n".join(rows)
+    tuning_block = ""
+    if tuned_instruction:
+        tuning_block = f"\nOptimization instruction (from DSPy GEPA):\n{tuned_instruction}\n"
+
     return f"""You are an expert movie recommender.
 
 Task:
 Choose exactly ONE movie from the candidate list and return strict JSON only.
+You are using RAG context: higher rag_score means stronger retrieval relevance.
 
 User preferences:
 {preferences}
@@ -249,11 +366,14 @@ Watch history (never recommend these):
 
 Candidate movies:
 {candidate_text}
+{tuning_block}
 
 Hard rules:
 1) Return ONLY valid JSON with keys: tmdb_id (int), description (string).
 2) tmdb_id must be one from the candidate list and must not be in watch history.
 3) description must be <= 500 characters, vivid and specific.
+4) Style guide: {style}
+5) Output must contain EXACTLY two keys: tmdb_id and description. Do not include reasoning or any extra key.
 
 Output format:
 {{
@@ -279,9 +399,9 @@ def _fallback_result(preferences: str, ranked: pd.DataFrame) -> dict:
     best = ranked.iloc[0]
     desc = (
         f"Try {best.title} ({_safe_int(best.year)}): it blends {best.genres.lower()} with a "
-        f"strong audience track record, and matches your request for {preferences.strip()[:120]}."
+        f"strong audience track record, and matches your request for {preferences.strip()[:120]}"
     )
-    return {"tmdb_id": int(best.tmdb_id), "description": desc[:500]}
+    return _enforce_output_spec(int(best.tmdb_id), desc)
 
 
 def _call_llm(prompt: str) -> dict:
@@ -322,10 +442,16 @@ def get_recommendation(preferences: str, history: list[str], history_ids: list[i
     clean_history = [str(h).strip() for h in (history or []) if str(h).strip()]
     clean_ids = [_safe_int(i) for i in (history_ids or []) if _safe_int(i) > 0]
 
+    env_style = str(os.getenv("RECOMMENDER_PROMPT_STYLE", "")).strip().lower()
+    style_name = env_style if env_style in PROMPT_STYLES else _ACTIVE_PROMPT_STYLE
+    tuned_instruction = str(os.getenv("RECOMMENDER_TUNED_INSTRUCTION", "")).strip() or _ACTIVE_TUNED_INSTRUCTION
+
     cache_key = (
         _normalize_text(clean_pref),
         tuple(sorted(clean_ids)),
         tuple(sorted(_normalize_text(h) for h in clean_history)),
+        style_name,
+        _normalize_text(tuned_instruction),
     )
     if cache_key in _CACHE:
         return dict(_CACHE[cache_key])
@@ -337,7 +463,7 @@ def get_recommendation(preferences: str, history: list[str], history_ids: list[i
     valid_ids = set(ranked["tmdb_id"].astype(int).tolist())
     watched_ids = set(clean_ids)
 
-    prompt = _build_prompt(clean_pref, clean_history, clean_ids, ranked)
+    prompt = _build_prompt(clean_pref, clean_history, clean_ids, ranked, style_name, tuned_instruction)
 
     try:
         llm_result = _call_llm(prompt)
@@ -350,7 +476,7 @@ def get_recommendation(preferences: str, history: list[str], history_ids: list[i
         if not description:
             raise ValueError("LLM returned empty description")
 
-        result = {"tmdb_id": tmdb_id, "description": description[:500]}
+        result = _enforce_output_spec(tmdb_id, description)
     except Exception:
         result = _fallback_result(clean_pref, ranked)
 

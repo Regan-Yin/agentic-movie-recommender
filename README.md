@@ -75,6 +75,35 @@ python test.py   # key is picked up automatically
 
 This checks that your `get_recommendation()` returns a valid response: correct keys, a `tmdb_id` from the candidate list, no repeats from watch history, and within the time limit.
 
+### Optional: RAG + DSPy/GEPA optimization loop (for quality tuning)
+
+To optimize recommendation quality beyond baseline prompting, this project includes a RAG + DSPy/GEPA workflow:
+
+```bash
+OLLAMA_API_KEY=your_key_here TMDB_API_KEY=your_tmdb_v3_key python dspy_gepa_benchmark.py --num-cases 12 --min-cases 30 --auto light
+```
+
+What this does:
+
+- Runs native style benchmarking across multiple prompt styles.
+- Uses RAG-ranked candidate context as structured input to a DSPy module.
+- Uses `dspy.GEPA` to optimize prompt behavior with feedback-aware scoring.
+- Expands dev/eval cases automatically via TMDB API (when `TMDB_API_KEY` or `TMDB_READ_ACCESS_TOKEN` is set), then falls back to local CSV-generated cases.
+- Writes `dspy_gepa_best_config.json` with the best style and benchmark scores.
+
+Optional TMDB auth (either one):
+
+```bash
+export TMDB_API_KEY=your_tmdb_v3_key
+# or
+export TMDB_READ_ACCESS_TOKEN=your_tmdb_v4_read_token
+
+# Optional (only if your environment has SSL cert-chain issues)
+export TMDB_SSL_NO_VERIFY=1
+```
+
+`llm.py` will automatically read `dspy_gepa_best_config.json` (if present) and use the tuned style in production inference.
+
 ---
 
 ## The function signature

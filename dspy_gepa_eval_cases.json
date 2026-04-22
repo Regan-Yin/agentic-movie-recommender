@@ -1,0 +1,78 @@
+[
+  {
+    "preferences": "I want action movies with superheroes and strong visuals.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me something funny and feel-good.",
+    "history": [
+      "The Dark Knight Rises"
+    ],
+    "history_ids": [
+      49026
+    ]
+  },
+  {
+    "preferences": "I like emotional sci-fi adventure with hope.",
+    "history": [
+      "Avatar: Fire and Ash"
+    ],
+    "history_ids": [
+      83533
+    ]
+  },
+  {
+    "preferences": "Need a smart mystery thriller with twists.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want a warm family animation for weekend.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want tense crime action but not horror.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Looking for romantic drama with strong character arc.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me a dark but stylish action thriller.",
+    "history": [
+      "Shelter"
+    ],
+    "history_ids": [
+      1290821
+    ]
+  },
+  {
+    "preferences": "I want science fiction with ideas and emotion. I liked The Hunger Games: The Ballad of Songbirds & Snakes, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want high-energy action with heroic stakes. I liked Anna, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want an adventurous movie with epic world-building.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want high-energy action with heroic stakes. I liked John Wick, but want something fresh.",
+    "history": [
+      "Black Panther"
+    ],
+    "history_ids": [
+      284054
+    ]
+  }
+]

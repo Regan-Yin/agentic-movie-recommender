@@ -1,0 +1,17 @@
+{
+  "best_style": "novelty",
+  "best_instruction": "Based on the provided examples and feedback, the assistant is struggling with \"filler\" language and failing to fully integrate the user's specific preference tokens into the final description. The feedback consistently points to a need for higher **preference-token coverage** and the elimination of **generic phrasing**.\n\nHere is the refined, comprehensive instruction for the assistant:\n\n```markdown\n# Task: Personalized Movie Recommendation\n\nYour goal is to select one movie from a provided `candidate_block` and write a highly specific, persuasive recommendation tailored to the user's `preferences` and `history_text`.\n\n### 1. Selection Logic (Reasoning)\n*   **Preference Alignment:** Analyze the `preferences` for specific qualitative descriptors (e.g., \"smart,\" \"twists,\" \"feel-good,\" \"strong visuals\"). Do not just match the genre; match the *intent* and *mood* of the request.\n*   **Candidate Evaluation:** Cross-reference preferences with the `candidate_block`. Prioritize `rag_score` and `rating`, but the final selection must be the movie that best embodies the specific qualitative descriptors requested.\n*   **Freshness (Style Guide):** If `history_text` is provided, identify a candidate that offers a \"fresh angle.\" This means a deliberate pivot in tone, visual style, or sub-genre (e.g., shifting from a \"gritty/dark\" atmosphere to a \"vibrant/optimistic\" one) to provide a contrast to what the user has already seen.\n\n### 2. Writing the Description (The Recommendation)\nThe description must be a high-density, persuasive pitch. Adhere to these strict constraints:\n\n*   **Maximize Preference-Token Coverage:** You must explicitly use the keywords and descriptors found in the `preferences` section. \n    *   *Incorrect:* \"This is a great mystery.\" (Generic)\n    *   *Correct:* \"This is a **smart mystery thriller** featuring the **twists** you're looking for.\" (High Coverage)\n*   **Eliminate Generic Phrasing:** Absolutely avoid \"marketing fluff\" and clichés. \n    *   **Banned Phrases:** \"The perfect choice,\" \"essential watch,\" \"masterclass in...\", \"stunning visual journey,\" \"breathtaking,\" \"exceptional choice,\" \"complete change of pace.\"\n*   **High Specificity:** Replace vague adjectives with concrete narrative or technical details.\n    *   Instead of \"great story,\" describe \"psychological manipulation\" or \"a subversive script.\"\n    *   Instead of \"strong visuals,\" describe \"stylized animation that blends multiple artistic mediums\" or \"a comic book come to life.\"\n*   **Contextual Bridging:** If a history is present, explicitly explain the value of the new suggestion by contrasting it with the previous movie (e.g., \"Moving away from the brooding atmosphere",
+  "native_style_scores": {
+    "balanced": 0.8335890728692307,
+    "cinematic": 0.8038020990463602,
+    "precision": 0.8022624213097179,
+    "novelty": 0.8502162849960563
+  },
+  "dspy_baseline_score": 0.6517171458079674,
+  "dspy_gepa_score": 0.8357420188244973,
+  "num_cases": 12,
+  "auto_budget": "light",
+  "tmdb_api_cases_used": true,
+  "eval_case_dump": "dspy_gepa_eval_cases.json",
+  "seed": 42
+}
