@@ -594,7 +594,7 @@ def run(args):
     reflection_lm = _configure_dspy_models()
 
     style_scores = {style: _evaluate_native_style(style, cases) for style in PROMPT_STYLES}
-    best_style = max(style_scores, key=style_scores.get)
+    best_style = max(style_scores, key=lambda s: style_scores[s])
 
     split = max(4, int(0.6 * len(cases)))
     train_cases = cases[:split]

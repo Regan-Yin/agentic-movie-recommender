@@ -22,9 +22,15 @@ import math
 import os
 import re
 import time
+from typing import Any
 
 ollama = importlib.import_module("ollama")
 pd = importlib.import_module("pandas")
+
+# Type alias used in function signatures. `pd` is loaded dynamically via
+# importlib so static checkers don't resolve `pd.DataFrame` as a type; this
+# alias keeps annotations valid without forcing a static pandas import.
+DataFrame = Any
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -251,7 +257,7 @@ def _infer_tone_tokens(preferences: str) -> set[str]:
 # ---------------------------------------------------------------------------
 
 
-def _prepare_movie_table(df: pd.DataFrame) -> pd.DataFrame:
+def _prepare_movie_table(df: DataFrame) -> DataFrame:
     movies = df.copy()
     for col in ["title", "genres", "keywords", "overview", "tagline", "director", "top_cast"]:
         movies[col] = movies[col].fillna("")
@@ -329,7 +335,7 @@ def _rag_retrieve(
     history: list[str],
     history_ids: list[int],
     top_k: int = 100,
-) -> pd.DataFrame:
+) -> DataFrame:
     pref_text = _normalize_text(preferences)
     pref_tokens = _tokenize(pref_text)
     pref_genre_weights = _infer_genre_weights(preferences)
@@ -405,7 +411,7 @@ def _rag_retrieve(
     return candidates.sort_values("rag_score", ascending=False).head(top_k).copy()
 
 
-def _rank_candidates(preferences: str, history: list[str], history_ids: list[int]) -> pd.DataFrame:
+def _rank_candidates(preferences: str, history: list[str], history_ids: list[int]) -> DataFrame:
     pref_tokens = _tokenize(preferences)
     pref_genre_weights = _infer_genre_weights(preferences)
     pref_genre_set = set(pref_genre_weights)
@@ -483,7 +489,7 @@ def _history_pairs(history: list[str], history_ids: list[int]) -> str:
     return ", ".join(bits)
 
 
-def _candidate_block(ranked: pd.DataFrame) -> str:
+def _candidate_block(ranked: DataFrame) -> str:
     rows = []
     for row in ranked.itertuples():
         overview = str(row.overview)[:200].replace("\n", " ")
@@ -501,7 +507,7 @@ def _build_prompt(
     preferences: str,
     history: list[str],
     history_ids: list[int],
-    ranked: pd.DataFrame,
+    ranked: DataFrame,
     style_name: str,
     tuned_instruction: str,
     banned_ids: list[int] | None = None,
@@ -698,7 +704,7 @@ def _fallback_result(
     preferences: str,
     history: list[str],
     history_ids: list[int],
-    ranked: pd.DataFrame,
+    ranked: DataFrame,
     banned_ids: set[int],
 ) -> dict:
     candidates = ranked[~ranked["tmdb_id"].astype(int).isin(banned_ids)]
