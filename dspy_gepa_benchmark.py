@@ -12,10 +12,13 @@ from urllib.request import Request, urlopen
 import importlib
 
 from llm import (
+    BANNED_PHRASES,
+    DESCRIPTION_MAX_CHARS,
     MODEL,
     PROMPT_STYLES,
     TUNED_CONFIG_PATH,
     _MOVIES,
+    _history_profile,
     _infer_genre_weights,
     _normalize_text,
     _rank_candidates,
@@ -46,6 +49,28 @@ BASE_DEV_CASES = [
     EvalCase("I want tense crime action but not horror.", [], []),
     EvalCase("Looking for romantic drama with strong character arc.", [], []),
     EvalCase("Give me a dark but stylish action thriller.", ["Shelter"], [1290821]),
+    # Conflict cases: preference intentionally diverges from history genre mix,
+    # so the model must prioritize preference and acknowledge the pivot.
+    EvalCase(
+        "I want a pure thriller with real tension and no romance subplot.",
+        ["Crime 101"],
+        [1171145],
+    ),
+    EvalCase(
+        "Give me an atmospheric horror with slow-burn dread, not gore.",
+        ["Pretty Lethal"],
+        [1084187],
+    ),
+    EvalCase(
+        "I want a cerebral sci-fi, not an action-heavy one.",
+        ["War Machine"],
+        [1265609],
+    ),
+    EvalCase(
+        "Looking for a light feel-good comedy, not a dark crime piece.",
+        ["The Shadow's Edge"],
+        [1419406],
+    ),
 ]
 
 PREFERENCE_TEMPLATES = {
@@ -340,6 +365,29 @@ def _specificity_score(preferences: str, description: str) -> float:
     return max(0.0, min(1.0, 0.72 * overlap + 0.28 * (1.0 - generic_density)))
 
 
+def _banned_phrase_penalty(description: str) -> float:
+    text = _normalize_text(description)
+    if not text:
+        return 0.0
+    hits = sum(1 for phrase in BANNED_PHRASES if phrase.lower() in text)
+    return min(1.0, 0.25 * hits)
+
+
+def _history_acknowledgement_bonus(preferences: str, history_ids: set[int], description: str) -> float:
+    if not history_ids:
+        return 0.0
+    pref_genre_set = set(_infer_genre_weights(preferences))
+    _, history_genres = _history_profile(list(history_ids))
+    conflict = history_genres - pref_genre_set
+    if not conflict:
+        return 0.0
+    desc_norm = _normalize_text(description)
+    mention = any(g.lower() in desc_norm for g in conflict)
+    pivot_words = ("shift", "pivot", "moving", "unlike", "contrast", "instead of", "away from")
+    pivot_mentioned = any(w in desc_norm for w in pivot_words)
+    return 1.0 if (mention and pivot_mentioned) else (0.55 if pivot_mentioned else 0.0)
+
+
 def _metric_from_output(preferences: str, history_ids: set[int], valid_ids: list[int], tmdb_id: int, description: str):
     if tmdb_id not in set(valid_ids):
         return 0.0, "Chosen tmdb_id is outside the candidate list."
@@ -354,20 +402,40 @@ def _metric_from_output(preferences: str, history_ids: set[int], valid_ids: list
     genre_score = _genre_alignment_score(preferences, str(movie.genres))
     quality_score = float(movie.quality_score)
     desc_len = len(str(description or ""))
-    if 60 <= desc_len <= 420:
+    if desc_len > DESCRIPTION_MAX_CHARS:
+        desc_len_score = 0.0
+    elif 90 <= desc_len <= 380:
         desc_len_score = 1.0
-    elif 35 <= desc_len <= 500:
-        desc_len_score = 0.75
+    elif 60 <= desc_len < 90 or 380 < desc_len <= 480:
+        desc_len_score = 0.8
+    elif 35 <= desc_len < 60:
+        desc_len_score = 0.5
     elif 1 <= desc_len < 35:
-        desc_len_score = 0.35
+        desc_len_score = 0.25
     else:
         desc_len_score = 0.0
 
     spec_score = _specificity_score(preferences, description)
-    final = 0.34 * genre_score + 0.26 * quality_score + 0.20 * desc_len_score + 0.20 * spec_score
+    banned_penalty = _banned_phrase_penalty(description)
+    history_bonus = _history_acknowledgement_bonus(preferences, history_ids, description)
+
+    # Preference-first weighting: genre alignment with preference dominates.
+    final = (
+        0.36 * genre_score
+        + 0.22 * quality_score
+        + 0.16 * desc_len_score
+        + 0.18 * spec_score
+        + 0.08 * history_bonus
+        - 0.20 * banned_penalty
+    )
+    final = max(0.0, min(1.0, final))
+
     feedback = (
         f"genre={genre_score:.3f}, quality={quality_score:.3f}, length={desc_len_score:.3f}, "
-        f"specificity={spec_score:.3f}. Improve preference-token coverage and avoid generic phrasing."
+        f"specificity={spec_score:.3f}, history_ack={history_bonus:.2f}, banned={banned_penalty:.2f}. "
+        "Prioritize preference keywords over history, keep description <=500 chars, name a concrete "
+        "detail (director/cast/plot hook), and avoid banned marketing phrases. If history genres "
+        "differ from preference, acknowledge the pivot in ONE short clause."
     )
     return final, feedback
 
