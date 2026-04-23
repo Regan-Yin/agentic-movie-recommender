@@ -22,9 +22,8 @@ import math
 import os
 import re
 import time
-
-ollama = importlib.import_module("ollama")
-pd = importlib.import_module("pandas")
+import pandas as pd
+import ollama
 
 # ---------------------------------------------------------------------------
 # Configuration
