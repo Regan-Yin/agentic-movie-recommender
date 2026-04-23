@@ -52,6 +52,42 @@
     ]
   },
   {
+    "preferences": "I want a pure thriller with real tension and no romance subplot.",
+    "history": [
+      "Crime 101"
+    ],
+    "history_ids": [
+      1171145
+    ]
+  },
+  {
+    "preferences": "Give me an atmospheric horror with slow-burn dread, not gore.",
+    "history": [
+      "Pretty Lethal"
+    ],
+    "history_ids": [
+      1084187
+    ]
+  },
+  {
+    "preferences": "I want a cerebral sci-fi, not an action-heavy one.",
+    "history": [
+      "War Machine"
+    ],
+    "history_ids": [
+      1265609
+    ]
+  },
+  {
+    "preferences": "Looking for a light feel-good comedy, not a dark crime piece.",
+    "history": [
+      "The Shadow's Edge"
+    ],
+    "history_ids": [
+      1419406
+    ]
+  },
+  {
     "preferences": "I want science fiction with ideas and emotion. I liked The Hunger Games: The Ballad of Songbirds & Snakes, but want something fresh.",
     "history": [],
     "history_ids": []
@@ -74,5 +110,161 @@
     "history_ids": [
       284054
     ]
+  },
+  {
+    "preferences": "I want a romantic movie with chemistry and heart.",
+    "history": [
+      "Hereditary"
+    ],
+    "history_ids": [
+      493922
+    ]
+  },
+  {
+    "preferences": "I want high-energy action with heroic stakes.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want science fiction with ideas and emotion.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me a meaningful drama with strong performances.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me smart sci-fi with immersive world design. I liked Dark Phoenix, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me an action movie with intense set pieces.",
+    "history": [
+      "Thor: Ragnarok"
+    ],
+    "history_ids": [
+      284053
+    ]
+  },
+  {
+    "preferences": "Give me tense horror that stays with me. I liked Scream VI, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me a fun adventure with big momentum.",
+    "history": [
+      "Harry Potter and the Deathly Hallows: Part 2"
+    ],
+    "history_ids": [
+      12445
+    ]
+  },
+  {
+    "preferences": "I want a heartfelt animated movie with charm.",
+    "history": [
+      "Mission: Impossible - Fallout"
+    ],
+    "history_ids": [
+      353081
+    ]
+  },
+  {
+    "preferences": "Give me crime drama with strong tension. I liked BlacKkKlansman, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me historical war drama with high stakes.",
+    "history": [
+      "Fantastic Beasts and Where to Find Them"
+    ],
+    "history_ids": [
+      259316
+    ]
+  },
+  {
+    "preferences": "I want emotional character-driven storytelling. I liked Arrival, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want a romantic movie with chemistry and heart. I liked Her, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want high-energy action with heroic stakes. I liked Avengers: Age of Ultron, but want something fresh.",
+    "history": [
+      "Snowpiercer"
+    ],
+    "history_ids": [
+      110415
+    ]
+  },
+  {
+    "preferences": "I want emotional character-driven storytelling.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me tense horror that stays with me. I liked A Quiet Place: Day One, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me creative animation and an uplifting tone.",
+    "history": [
+      "Star Wars: The Last Jedi"
+    ],
+    "history_ids": [
+      181808
+    ]
+  },
+  {
+    "preferences": "Give me a comedy that is light and rewatchable. I liked The Nice Guys, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "I want unsettling horror with suspense. I liked The Witch, but want something fresh.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me smart sci-fi with immersive world design.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me tense horror that stays with me.",
+    "history": [
+      "Django Unchained"
+    ],
+    "history_ids": [
+      68718
+    ]
+  },
+  {
+    "preferences": "Give me a comedy that is light and rewatchable.",
+    "history": [],
+    "history_ids": []
+  },
+  {
+    "preferences": "Give me a meaningful drama with strong performances. I liked Babylon, but want something fresh.",
+    "history": [
+      "Oblivion"
+    ],
+    "history_ids": [
+      75612
+    ]
+  },
+  {
+    "preferences": "I want unsettling horror with suspense.",
+    "history": [],
+    "history_ids": []
   }
 ]
